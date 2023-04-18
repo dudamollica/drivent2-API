@@ -1,4 +1,4 @@
-import { notFoundError, unauthorizedError } from '@/errors';
+import { badRequestError, notFoundError, unauthorizedError } from '@/errors';
 import paymentsRepository from '@/repositories/payments-repository/index';
 import ticketsRepository from '@/repositories/tickets-repository/index';
 import userRepository from '@/repositories/user-repository/index';
@@ -6,7 +6,7 @@ import { Payment } from '@prisma/client';
 
 async function getTicketPayment(ticketId: number, userId: number): Promise<Payment> {
   const ticket = await ticketsRepository.findTicket(ticketId);
-  if (!ticket) throw notFoundError();
+  if (!ticket) throw notFoundError('not found ticket');
   const enrollmentId = ticket.enrollmentId;
 
   const enrollment = await ticketsRepository.findUserEnrollment(userId);
@@ -14,8 +14,7 @@ async function getTicketPayment(ticketId: number, userId: number): Promise<Payme
   if (enrollmentId != enrollment.id) throw unauthorizedError();
 
   const payment: Payment = await paymentsRepository.getPaymentData(ticketId);
-  if (!payment) throw notFoundError();
-
+  if (!payment) throw notFoundError('not found payment');
   return payment;
 }
 
@@ -32,14 +31,17 @@ async function paymentProcess(userId: number, ticketId: number, cardIssuer: stri
 
   if (ticket.enrollmentId != enrollmentId) throw unauthorizedError();
 
-  let cardLastDigits = cardNumber.toString().substring(cardNumber.toString().length - 3);
+  let cardLastDigits = cardNumber.toString().substring(cardNumber.toString().length - 4);
 
   const ticketType = await ticketsRepository.getTicketTypeById(ticket.ticketTypeId);
   const value = ticketType.price;
 
   await ticketsRepository.ticketStatusPayed(ticketId);
 
-  return await paymentsRepository.createPayment(ticketId, cardIssuer, cardLastDigits, value);
+  await paymentsRepository.createPayment(ticketId, cardIssuer, cardLastDigits, value);
+  const payment: Payment = await paymentsRepository.getPaymentData(ticketId);
+  if (!payment) throw badRequestError("Payment not found");
+  return payment;
 }
 
 export default {
