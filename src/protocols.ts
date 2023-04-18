@@ -45,3 +45,13 @@ export type TicketOutput = {
   createdAt: Date,
   updatedAt: Date,
 };
+
+export type PaymentProcess = {
+  id: number,
+  ticketId: number,
+  value: number,
+  cardIssuer: string, // VISA | MASTERCARD
+  cardLastDigits: string,
+  createdAt: Date,
+  updatedAt: Date,
+}
